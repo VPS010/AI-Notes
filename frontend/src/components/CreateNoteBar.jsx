@@ -25,6 +25,7 @@ const AlertDescription = ({ children }) => (
 const CreateNoteBar = ({ onCreateNote }) => {
   // Modal & Note States
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [images, setImages] = useState([]);
   const [recordedAudio, setRecordedAudio] = useState(null); // audio Blob for backend
@@ -190,14 +191,16 @@ const CreateNoteBar = ({ onCreateNote }) => {
   // Save the note (including text, images, and the recorded audio Blob)
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (text.trim() || images.length > 0 || recordedAudio) {
+    if (title.trim() && (text.trim() || images.length > 0 || recordedAudio)) {
       onCreateNote({
+        title: title,
         content: text,
         images: images,
-        audio: recordedAudio, // send audio Blob to backend
+        audio: recordedAudio,
         type: "text",
       });
       // Clear states after saving
+      setTitle("");
       setText("");
       setImages([]);
       setRecordedAudio(null);
@@ -232,7 +235,6 @@ const CreateNoteBar = ({ onCreateNote }) => {
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
           onClick={(e) => {
-            // If the click is on the overlay (not the modal content), close the modal
             if (e.target === e.currentTarget) {
               setIsEditorOpen(false);
             }
@@ -249,7 +251,7 @@ const CreateNoteBar = ({ onCreateNote }) => {
               </button>
 
               <button
-                type="submit"
+                onClick={handleSubmit}
                 className="px-5 py-2 bg-gray-500 rounded-3xl text-white hover:bg-gray-600"
               >
                 Save
@@ -258,14 +260,25 @@ const CreateNoteBar = ({ onCreateNote }) => {
             <div className="p-4">
               {renderBrowserWarning()}
 
-              {/* Styled Recorded Audio Container */}
+              {/* Title Input */}
+              <p className="m-1 text-gray-700 font-semibold"> Title</p>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter note title..."
+                className="w-full p-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+
+              {/* Recorded Audio Container */}
               {audioUrl && (
                 <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg shadow-sm">
                   <p className="mb-2 text-sm font-semibold text-gray-700">
                     Recorded Audio
                   </p>
                   <audio
-                    ref={audioRef} // Attach the ref here
+                    ref={audioRef}
                     controls
                     src={audioUrl}
                     className="w-full h-8 rounded-full shadow-md bg-gray-100 focus:outline-none focus:ring-2 hover:ring-blue-500 hover:bg-gray-200"
@@ -274,10 +287,11 @@ const CreateNoteBar = ({ onCreateNote }) => {
               )}
 
               <form onSubmit={handleSubmit} className="mt-4">
+              <p className="m-1 text-gray-700 font-semibold">Content</p>
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder="Edit the transcribed text here..."
+                  placeholder=" Enter the note Content / Transcribed text here"
                   className="w-full h-48 p-3 border rounded-lg mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
 
@@ -329,7 +343,6 @@ const CreateNoteBar = ({ onCreateNote }) => {
       <div className="bottom-0 rounded-full shadow-sm shadow-gray-500 my-4 py-1 left-0 right-0 bg-white border-t border-gray-200 px-4">
         <div className="max-w-screen-xl mx-auto flex items-center gap-4">
           <div className="flex-1 flex items-center gap-4 bg-white rounded-lg px-4 py-2">
-            {/* Manual note creation */}
             <button
               type="button"
               onClick={() => setIsEditorOpen(true)}

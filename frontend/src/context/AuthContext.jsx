@@ -1,0 +1,77 @@
+import { createContext, useContext, useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import api from "./api";
+import { useNavigate } from "react-router-dom";
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await api.get("/api/auth/me");
+      setUser(res.data);
+    } catch (error) {
+      logout();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const signup = async (data) => {
+    try {
+      const res = await api.post("/api/auth/signup", data);
+      localStorage.setItem("token", res.data.token);
+      setUser(res.data);
+      toast.success("Registration successful!");
+      navigate("/dashboard");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Registration failed");
+    }
+  };
+
+  const login = async (data) => {
+    try {
+      const res = await api.post("/api/auth/login", data);
+      localStorage.setItem("token", res.data.token);
+      setUser(res.data);
+      toast.success("Login successful!");
+      navigate("/dashboard");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Login failed");
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
+    toast.success("Logged out successfully!");
+    navigate("/login");
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signup,
+        login,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
