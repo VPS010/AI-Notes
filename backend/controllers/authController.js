@@ -5,7 +5,11 @@ import jwt from 'jsonwebtoken';
 export const getMe = async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
-        res.json(user);
+        res.json({
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+        });
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
     }
@@ -48,7 +52,7 @@ export const loginUser = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        const token =  jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
             expiresIn: '30d'
         });
 

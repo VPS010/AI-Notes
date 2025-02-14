@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   Maximize2,
@@ -12,14 +12,22 @@ import {
   FilePlus,
   Speaker,
 } from "lucide-react";
+import api from "../context/api";
 
 const NoteModal = ({ note, onClose, onUpdate }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [content, setContent] = useState(note.content);
-  const [isFavorite, setIsFavorite] = useState(note.isFavorite || false);
+  const [title, setTitle] = useState(note.title);
+  const [isFavorite, setIsFavorite] = useState(note.favorite || false);
   const [activeTab, setActiveTab] = useState("transcript");
+  const [showFullContent, setShowFullContent] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [images, setImages] = useState(note.images || []);
+  const [audioElement] = useState(new Audio(note.recordingUrl));
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const tabs = [
     { id: "notes", icon: <Notebook size={18} />, label: "Notes" },
@@ -31,6 +39,109 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
       label: "Speaker Transcript",
     },
   ];
+
+  useEffect(() => {
+    const updateProgress = () => {
+      const percent = (audioElement.currentTime / audioElement.duration) * 100;
+      setProgress(percent);
+    };
+
+    audioElement.addEventListener("timeupdate", updateProgress);
+    return () => audioElement.removeEventListener("timeupdate", updateProgress);
+  }, [audioElement]);
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      audioElement.pause();
+    } else {
+      audioElement.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleDownload = () => {
+    const link = document.createElement("a");
+    link.href = note.recordingUrl;
+    link.download = `audio-${note._id}.mp3`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleTitleChange = (e) => {
+    setTitle(e.target.value);
+    setIsDirty(true);
+  };
+
+  const handleContentChange = (e) => {
+    setContent(e.target.value);
+    setIsDirty(true);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const { data } = await api.post("/api/upload/image", formData);
+      setImages([...images, data.url]);
+      setIsDirty(true);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+    }
+  };
+
+  const handleImageDelete = (index) => {
+    const newImages = images.filter((_, i) => i !== index);
+    setImages(newImages);
+    setIsDirty(true);
+  };
+
+  const handleFavoriteToggle = async () => {
+    try {
+      const newFavoriteState = !isFavorite;
+
+      const { data } = await api.patch(`/api/notes/${note._id}/favorite`, {
+        favorite: newFavoriteState,
+      });
+
+      setIsFavorite(newFavoriteState);
+
+      // Update the parent component
+      onUpdate(data.data);
+    } catch (error) {
+      // Revert on error
+      setIsFavorite(!newFavoriteState);
+      console.error("Error toggling favorite:", error);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!isDirty) return;
+
+    setIsUpdating(true);
+    try {
+      const updatedNote = {
+        ...note,
+        title,
+        content,
+        images,
+        isFavorite,
+      };
+
+      const { data } = await api.patch(`/api/notes/${note._id}`, updatedNote);
+      onUpdate(data.data);
+      setIsDirty(false);
+    } catch (error) {
+      console.error("Error updating note:", error);
+    } finally {
+      setIsUpdating(false);
+      onClose();
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -52,7 +163,7 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsFavorite(!isFavorite)}
+                onClick={handleFavoriteToggle}
                 className="p-2 hover:bg-gray-50 bg-gray-100 rounded-lg transition-colors"
               >
                 <Star
@@ -77,8 +188,27 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
           </div>
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold">{note.title}</h2>
-              <button className="text-gray-600">
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={title}
+                  onChange={handleTitleChange}
+                  className="text-lg font-semibold bg-gray-50 border border-gray-200 rounded px-2 py-1"
+                  autoFocus
+                  onBlur={() => setIsEditing(false)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      setIsEditing(false);
+                    }
+                  }}
+                />
+              ) : (
+                <h2 className="text-lg font-semibold">{title}</h2>
+              )}
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-gray-600"
+              >
                 <Pencil size={14} />
               </button>
             </div>
@@ -90,25 +220,25 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
 
         {/* Audio Player */}
         {note.type === "audio" && (
-          <div className="px-6 py-1 flex rounded-full mx-4 bg-gray-100 items-center gap-4">
+          <div className="px-6 py-3 flex items-center gap-4 bg-gray-100 mx-4 rounded-lg">
             <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-900 text-gray-50 hover:bg-gray-800"
+              onClick={togglePlay}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-900 text-white hover:bg-gray-800"
             >
               {isPlaying ? <Pause size={18} /> : <Play size={18} />}
             </button>
             <div className="flex-1">
-              <div className="w-full bg-gray-200 rounded-full h-1">
+              <div className="bg-gray-200 rounded-full h-1">
                 <div
                   className="bg-red-600 h-1 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
-            <div className="text-sm text-gray-800 min-w-[80px]">
-              00:00 / {note.duration}
-            </div>
-            <button className="text-sm text-gray-800 hover:text-gray-800 hover:bg-gray-300 p-1 bg-gray-200 rounded-full px-2 font-medium">
+            <button
+              onClick={handleDownload}
+              className="text-sm text-gray-800 hover:bg-gray-200 px-3 py-1 rounded-full bg-gray-100"
+            >
               ↓ Download Audio
             </button>
           </div>
@@ -131,7 +261,6 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
                   {tab.icon}
                   {tab.label}
                 </div>
-
                 {activeTab === tab.id && (
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600" />
                 )}
@@ -146,29 +275,75 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
             <div>
               <div className="space-y-4">
                 <div className="flex justify-between border-gray-200 rounded-lg border p-4 items-start">
-                  <p className="text-gray-800 flex flex-col justify-start text-sm leading-relaxed">
-                    {content}
-                    <button className="text-gray-400 underline text-sm ml-0 mr-auto hover:text-gray-600">
-                      Read More
+                  <div className="flex flex-col w-full">
+                    <textarea
+                      value={content}
+                      onChange={handleContentChange}
+                      className="text-gray-800 text-sm leading-relaxed bg-transparent resize-none w-full focus:outline-none"
+                      rows={showFullContent ? 10 : 3}
+                    />
+                    <button
+                      onClick={() => setShowFullContent(!showFullContent)}
+                      className="text-gray-400 underline text-sm hover:text-gray-600 mt-2 self-start"
+                    >
+                      {showFullContent ? "Read Less" : "Read More"}
                     </button>
-                  </p>
-
-                  <button className="p-1 rounded-full bg-gray-100 flex items-center justify-center gap-1 hover:bg-gray-200 text-gray-500 px-2">
-                    <Copy size={15} />
-                    <p>copy</p>
-                  </button>
+                  </div>
                 </div>
               </div>
+
               {/* Image Upload Section */}
-              <div className="mt-4 p-4 border-gray-200 rounded-lg border ">
-                <div className="inline-flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-gray-200 rounded-xl hover:border-gray-300 cursor-pointer">
+              <div className="mt-4 p-4 flex items-center justify-start border-gray-200 rounded-lg border">
+                {images?.length > 0 && (
+                  <div className="px-6 py-4">
+                    <div className="flex flex-wrap gap-4">
+                      {images.map((img, index) => (
+                        <div key={index} className=" h-24 relative">
+                          <img
+                            src={img}
+                            alt={`Note attachment ${index + 1}`}
+                            className="w-full h-full object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            onClick={() => handleImageDelete(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <label className="inline-flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-gray-200 rounded-xl hover:border-gray-300 cursor-pointer">
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                  />
                   <div className="text-2xl text-gray-400 mb-1">+</div>
                   <span className="text-xs text-gray-500">Image</span>
-                </div>
+                </label>
               </div>
             </div>
           )}
+          <div className="flex justify-end">
+            {isDirty && (
+              <div className="m-4 bottom-4 left-auto right-4">
+                <button
+                  onClick={handleUpdate}
+                  disabled={isUpdating}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400"
+                >
+                  {isUpdating ? "Updating..." : "Update Note"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Update Button */}
       </div>
     </div>
   );

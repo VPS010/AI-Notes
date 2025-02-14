@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Mic, BookmarkIcon, HomeIcon, NotebookIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Logo from "../components/logo";
 
 const LandingPage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -17,12 +18,13 @@ const LandingPage = () => {
       {/* Navigation Bar */}
       <nav className="bg-white shadow-sm fixed w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="p-4">
-              <div className="flex items-center mb-2">
-                <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+          <div className="flex justify-between h-18">
+            <div className="px-4 py-2">
+              <div className="flex items-center">
+                {/* <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
                   <span className="text-white text-xl font-bold">AI</span>
-                </div>
+                </div> */}
+                <Logo />
                 <span className="ml-2 text-3xl font-semibold">AI Notes</span>
               </div>
             </div>

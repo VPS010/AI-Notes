@@ -1,6 +1,9 @@
-import axios from 'axios';
+import axios from 'axios'
 import FormData from 'form-data';
-import fs from 'fs';
+import * as Bytescale from "@bytescale/sdk";
+import nodeFetch from "node-fetch";
+import fs from "fs";
+
 
 // Image upload to ImgBB
 export const uploadImage = async (req, res) => {
@@ -28,30 +31,31 @@ export const uploadImage = async (req, res) => {
     }
 };
 
-// Audio upload to Bytescale
 export const uploadAudio = async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'No audio file provided' });
-        }
+        if (!req.file) return res.status(400).json({ message: "No audio file" });
+        //Upload to Bytescale
+        const uploadManager = new Bytescale.UploadManager({
+            fetchApi: nodeFetch,
+            apiKey: process.env.BYTESCALE_API_KEY,
+        });
 
-        const formData = new FormData();
-        formData.append('file', fs.createReadStream(req.file.path));
+        const result = await uploadManager.upload({
+            data: fs.createReadStream(req.file.path),
+            size: fs.statSync(req.file.path).size,
+            mime: req.file.mimetype,
+            originalFileName: req.file.originalname
+        });
 
-        const response = await axios.post(
-            'https://api.bytescale.com/v1/upload',
-            formData,
-            {
-                headers: {
-                    ...formData.getHeaders(),
-                    'Authorization': `Bearer ${process.env.BYTESCALE_API_KEY}`
-                }
-            }
-        );
+        //Cleanup
+        fs.unlinkSync(req.file.path);
 
-        return res.json({ url: response.data.fileUrl });
+        res.json({
+            url: result.fileUrl,
+        });
+
     } catch (error) {
-        const statusCode = error.response?.status || 500;
-        return res.status(statusCode).json({ message: error.message });
+        console.error("Upload Error:", error);
+        res.status(500).json({ message: "Audio processing failed" });
     }
 };

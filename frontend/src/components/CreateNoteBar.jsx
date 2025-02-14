@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Pencil, Image, Dot, Square, X, AlertCircle, Mic } from "lucide-react";
+import api from "../context/api";
 
 // Custom Alert Component
 const Alert = ({ children, variant = "default" }) => {
@@ -30,10 +31,13 @@ const CreateNoteBar = ({ onCreateNote }) => {
   const [images, setImages] = useState([]);
   const [recordedAudio, setRecordedAudio] = useState(null); // audio Blob for backend
   const [audioUrl, setAudioUrl] = useState(null); // URL for playback
+  const [isUploading, setIsUploading] = useState(false);
+  const [duration, setDuration] = useState("0:00");
 
   // Recording & Timer States
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTimer, setRecordingTimer] = useState(60);
+  const [recordingStartTime, setRecordingStartTime] = useState(null);
 
   // Browser support flags
   const [supportsMedia, setSupportsMedia] = useState(false);
@@ -47,7 +51,6 @@ const CreateNoteBar = ({ onCreateNote }) => {
   const interimTranscriptRef = useRef("");
   const audioRef = useRef(null); // Ref for the audio element
 
-  // Check for browser support on mount
   useEffect(() => {
     const mediaSupported = !!(
       navigator.mediaDevices &&
@@ -94,6 +97,40 @@ const CreateNoteBar = ({ onCreateNote }) => {
     }
   }, []);
 
+  const uploadFiles = async () => {
+    const uploadedImages = [];
+    let uploadedAudio = null;
+
+    try {
+      if (images.length > 0) {
+        const imageUploads = images.map(async (file) => {
+          const formData = new FormData();
+          formData.append("image", file);
+          const { data } = await api.post("/api/upload/image", formData);
+          return data.url;
+        });
+        uploadedImages.push(...(await Promise.all(imageUploads)));
+      }
+
+      if (recordedAudio) {
+        const audioFormData = new FormData();
+        audioFormData.append("audio", recordedAudio, "recording.webm");
+        const { data } = await api.post("/api/upload/audio", audioFormData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        uploadedAudio = data.url;
+      }
+
+      return {
+        images: uploadedImages,
+        recordingUrl: uploadedAudio,
+      };
+    } catch (err) {
+      console.error("Upload failed:", err);
+      throw err;
+    }
+  };
+
   // Timer for recording (max 60 seconds)
   useEffect(() => {
     let interval;
@@ -118,43 +155,63 @@ const CreateNoteBar = ({ onCreateNote }) => {
     }
   }, [audioUrl]);
 
-  // Start recording: initialize MediaRecorder and SpeechRecognition concurrently.
+  // Updated MediaRecorder setup with timestamp based duration calculation
   const startRecording = async () => {
-    if (!supportsMedia) {
-      alert("Your browser does not support audio recording.");
-      return;
-    }
-    if (!supportsSpeech) {
-      alert("Your browser does not support speech recognition.");
+    if (!supportsMedia || !supportsSpeech) {
+      alert("Your browser does not support required features.");
       return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: "audio/webm;codecs=opus",
+      });
 
-      // Set up MediaRecorder to capture the audio
-      const mediaRecorder = new MediaRecorder(stream);
+      // Capture start time in a local variable
+      const startTime = Date.now();
+      setRecordingStartTime(startTime); // Update state for UI if needed
+
       audioChunksRef.current = [];
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
-      mediaRecorder.onstop = () => {
-        // Create audio Blob and URL for playback
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
-        setRecordedAudio(audioBlob);
-        setAudioUrl(URL.createObjectURL(audioBlob));
-        // Stop all tracks to release the mic
-        stream.getTracks().forEach((track) => track.stop());
+
+      mediaRecorder.onstop = async () => {
+        try {
+          const audioBlob = new Blob(audioChunksRef.current, {
+            type: "audio/webm;codecs=opus",
+          });
+
+          if (audioBlob.size === 0) {
+            throw new Error("Empty audio recording");
+          }
+
+          setRecordedAudio(audioBlob);
+          const audioUrl = URL.createObjectURL(audioBlob);
+          setAudioUrl(audioUrl);
+
+          // Calculate duration using the start timestamp and current time
+          // Calculate duration using the local startTime
+          const durationMs = Date.now() - startTime;
+          const durationSeconds = Math.round(durationMs / 1000);
+          const minutes = Math.floor(durationSeconds / 60);
+          const seconds = durationSeconds % 60;
+          setDuration(`${minutes}:${seconds.toString().padStart(2, "0")}`);
+        } catch (error) {
+          console.error("Error processing recording:", error);
+          setDuration("0:00");
+        } finally {
+          stream.getTracks().forEach((track) => track.stop());
+        }
       };
-      mediaRecorder.start();
+
+      mediaRecorder.start(100);
       mediaRecorderRef.current = mediaRecorder;
 
-      // Start SpeechRecognition to transcribe (it will run concurrently)
       if (recognitionRef.current) {
-        // Reset any previous transcript
         finalTranscriptRef.current = "";
         interimTranscriptRef.current = "";
         setText("");
@@ -165,10 +222,12 @@ const CreateNoteBar = ({ onCreateNote }) => {
       setRecordingTimer(60);
     } catch (error) {
       console.error("Error accessing microphone:", error);
+      alert(
+        "Failed to start recording. Please check your microphone permissions."
+      );
     }
   };
 
-  // Stop recording: stop both MediaRecorder and SpeechRecognition, then open the Create Note modal.
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
@@ -177,36 +236,57 @@ const CreateNoteBar = ({ onCreateNote }) => {
       recognitionRef.current.stop();
     }
     setIsRecording(false);
-    // Open the Create Note modal (which will show the audio and transcribed text)
     setIsEditorOpen(true);
   };
 
-  // Handle image uploads
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const imageUrls = files.map((file) => URL.createObjectURL(file));
-    setImages((prev) => [...prev, ...imageUrls]);
-  };
-
   // Save the note (including text, images, and the recorded audio Blob)
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (title.trim() && (text.trim() || images.length > 0 || recordedAudio)) {
-      onCreateNote({
-        title: title,
+    if (isUploading) return;
+    setIsUploading(true);
+
+    try {
+      const { images: uploadedImages, recordingUrl } = await uploadFiles();
+
+      let validatedDuration = duration;
+      if (
+        !duration ||
+        duration.includes("Infinity") ||
+        duration.includes("NaN")
+      ) {
+        validatedDuration = "0:00";
+      }
+
+      const newNote = {
+        title,
         content: text,
-        images: images,
-        audio: recordedAudio,
-        type: "text",
-      });
-      // Clear states after saving
+        images: uploadedImages,
+        recordingUrl,
+        duration: validatedDuration,
+        type:
+          uploadedImages.length > 0 ? "image" : recordingUrl ? "audio" : "text",
+      };
+
+      await onCreateNote(newNote);
+
+      // Reset form
       setTitle("");
       setText("");
       setImages([]);
       setRecordedAudio(null);
       setAudioUrl(null);
+      setDuration("0:00");
       setIsEditorOpen(false);
+    } catch (err) {
+      console.error("Error creating note:", err);
+    } finally {
+      setIsUploading(false);
     }
+  };
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    setImages((prev) => [...prev, ...files]);
   };
 
   // Render a warning if the browser doesn't support recording features
@@ -234,27 +314,33 @@ const CreateNoteBar = ({ onCreateNote }) => {
       {isEditorOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setIsEditorOpen(false);
-            }
-          }}
+          onClick={(e) =>
+            !isUploading &&
+            e.target === e.currentTarget &&
+            setIsEditorOpen(false)
+          }
         >
           <div className="bg-white rounded-lg w-full max-w-2xl mx-4">
             <div className="flex p-4 justify-between border-b">
               <button
-                onClick={() => setIsEditorOpen(false)}
-                className="top-2 right-2 z-50 p-2 hover:bg-gray-100 rounded-full"
+                onClick={() => !isUploading && setIsEditorOpen(false)}
+                className={`top-2 right-2 z-50 p-2 hover:bg-gray-100 rounded-full ${
+                  isUploading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
                 title="Close"
+                disabled={isUploading}
               >
                 <X size={20} />
               </button>
 
               <button
                 onClick={handleSubmit}
-                className="px-5 py-2 bg-gray-500 rounded-3xl text-white hover:bg-gray-600"
+                className={`px-5 py-2 rounded-3xl text-white ${
+                  isUploading ? "bg-gray-400" : "bg-gray-500 hover:bg-gray-600"
+                }`}
+                disabled={isUploading}
               >
-                Save
+                {isUploading ? "Saving..." : "Save"}
               </button>
             </div>
             <div className="p-4">
@@ -287,7 +373,7 @@ const CreateNoteBar = ({ onCreateNote }) => {
               )}
 
               <form onSubmit={handleSubmit} className="mt-4">
-              <p className="m-1 text-gray-700 font-semibold">Content</p>
+                <p className="m-1 text-gray-700 font-semibold">Content</p>
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}

@@ -19,6 +19,10 @@ const noteSchema = new mongoose.Schema({
     type: String
   }],
   recordingUrl: String,
+  duration: {
+    type: String,
+    default: ""
+  },
   favorite: {
     type: Boolean,
     default: false

@@ -16,7 +16,12 @@ export const AuthProvider = ({ children }) => {
       if (!token) return;
 
       const res = await api.get("/api/auth/me");
-      setUser(res.data);
+      console.log("res.data", res.data);
+      setUser({
+        _id: res.data._id,
+        username: res.data.username,
+        email: res.data.email,
+      });
     } catch (error) {
       logout();
     } finally {
@@ -32,7 +37,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/api/auth/signup", data);
       localStorage.setItem("token", res.data.token);
-      setUser(res.data);
+      setUser({
+        _id: res.data._id,
+        username: res.data.username,
+        email: res.data.email,
+      });
       toast.success("Registration successful!");
       navigate("/dashboard");
     } catch (error) {
@@ -44,7 +53,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/api/auth/login", data);
       localStorage.setItem("token", res.data.token);
-      setUser(res.data);
+      setUser({
+        _id: res.data._id,
+        username: res.data.username,
+        email: res.data.email,
+      });
       toast.success("Login successful!");
       navigate("/dashboard");
     } catch (error) {

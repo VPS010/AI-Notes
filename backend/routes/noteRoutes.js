@@ -4,7 +4,8 @@ import {
     createNote,
     getNoteById,
     updateNote,
-    deleteNote
+    deleteNote,
+    toggleFavorite
 } from '../controllers/noteController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -20,5 +21,7 @@ router.route('/:id')
     .get(getNoteById)
     .patch(updateNote)
     .delete(deleteNote);
+
+router.route('/:id/favorite').patch(toggleFavorite);
 
 export default router;

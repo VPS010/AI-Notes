@@ -1,7 +1,7 @@
 import React from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 
-const SearchBar = ({ onSearch }) => {
+const SearchBar = ({ onSearch, onSort, sortOrder }) => {
   return (
     <div className="flex items-center gap-4 p-4 border-b border-gray-100">
       <div className="flex-1 relative">
@@ -16,10 +16,15 @@ const SearchBar = ({ onSearch }) => {
           onChange={(e) => onSearch(e.target.value)}
         />
       </div>
-      <button className="px-4 py-2 flex items-center text-gray-700 hover:bg-gray-50 bg-gray-100 rounded-full">
-        <SlidersHorizontal size={17} className="mr-2" /> Sort
+      <button
+        className="px-4 py-2 flex items-center text-gray-700 hover:bg-gray-200 bg-gray-100 rounded-full"
+        onClick={() => onSort(sortOrder === "desc" ? "asc" : "desc")}
+      >
+        <SlidersHorizontal size={17} className="mr-2" />
+        Sort {sortOrder === "desc" ? "Oldest First" : "Newest First"}
       </button>
     </div>
   );
 };
+
 export default SearchBar;
