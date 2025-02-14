@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Home, Star, ChevronDown, LogOut } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import Logo from "./logo";
 
 const Sidebar = ({ showFavorites, onFavoritesClick }) => {
+  const navigate = useNavigate();
   const [showLogout, setShowLogout] = useState(false);
   const menuRef = useRef(null);
   const { user, logout } = useAuth();
@@ -30,9 +32,12 @@ const Sidebar = ({ showFavorites, onFavoritesClick }) => {
   };
 
   return (
-    <div className="w-64 h-full bg-white border-r border-gray-100 flex flex-col">
-      <div className="p-4">
-        <div className="flex items-center mb-2">
+    <div className="w-64 bg-white border-t  border-gray-100 flex flex-col">
+      <div className="px-4 ">
+        <div
+          onClick={() => navigate("/")}
+          className="flex items-center cursor-pointer"
+        >
           <div className="py-2">
             <Logo />
           </div>
@@ -40,10 +45,10 @@ const Sidebar = ({ showFavorites, onFavoritesClick }) => {
         </div>
       </div>
 
-      <nav className="flex-1 px-4">
+      <nav className="flex-1 border-t pt-4 px-2">
         <div className="space-y-1">
           <button
-            className={`flex items-center w-full gap-3 px-3 py-2 text-sm font-medium rounded-lg ${
+            className={`flex items-center w-full cursor-default gap-3 px-3 py-3 text-md font-medium rounded-lg ${
               !showFavorites
                 ? "bg-purple-50 text-purple-600"
                 : "text-gray-600 hover:bg-gray-50"
@@ -56,7 +61,7 @@ const Sidebar = ({ showFavorites, onFavoritesClick }) => {
             <span>Home</span>
           </button>
           <button
-            className={`flex items-center w-full gap-3 px-3 py-2 text-sm font-medium rounded-lg ${
+            className={`flex items-center w-full gap-3 px-3 cursor-default py-3 text-md  font-medium rounded-lg ${
               showFavorites
                 ? "bg-purple-50 text-purple-600"
                 : "text-gray-600 hover:bg-gray-50"
@@ -71,7 +76,7 @@ const Sidebar = ({ showFavorites, onFavoritesClick }) => {
         </div>
       </nav>
 
-      <div className="p-4 border-t border-gray-100">
+      <div className="p-2 border-t border-gray-100">
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowLogout(!showLogout)}

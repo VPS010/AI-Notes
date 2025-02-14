@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import Sidebar from "./Sidebar";
-import NotesList from "./NotesList";
-import CreateNoteBar from "./CreateNoteBar";
-import SearchBar from "./SearchBar";
-import NoteModal from "./NoteModal";
+import { Menu } from "lucide-react";
+import Sidebar from "../components/Sidebar";
+import NotesList from "../components/NotesList";
+import CreateNoteBar from "../components/CreateNoteBar";
+import SearchBar from "../components/SearchBar";
+import NoteModal from "../components/NoteModal2";
 import api from "../context/api";
 
 const Dashboard = () => {
@@ -16,6 +17,7 @@ const Dashboard = () => {
   const [filteredNotesList, setFilteredNotesList] = useState([]);
   const [sortOrder, setSortOrder] = useState("desc");
   const [showFavorites, setShowFavorites] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -132,33 +134,72 @@ const Dashboard = () => {
     );
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>{error}</div>;
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
+  if (error)
+    return (
+      <div className="flex items-center justify-center h-screen">{error}</div>
+    );
 
   return (
-    <div className="flex h-screen">
-      <Sidebar
-        showFavorites={showFavorites}
-        onFavoritesClick={() => setShowFavorites(!showFavorites)}
-      />
-      <div className="flex-1 flex flex-col min-h-0">
-        <SearchBar
-          onSearch={setSearchQuery}
-          onSort={handleSort}
-          sortOrder={sortOrder}
+    <div className="flex h-screen relative">
+      {/* Mobile Sidebar Toggle Button */}
+      <button
+        className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white rounded-md shadow-md"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+      >
+        <Menu className="h-6 w-6" />
+      </button>
+
+      {/* Sidebar with responsive visibility */}
+      <div
+        className={`${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0 flex transition-transform h-screen duration-300 fixed md:relative z-40`}
+      >
+        <Sidebar
+          showFavorites={showFavorites}
+          onFavoritesClick={() => setShowFavorites(!showFavorites)}
         />
-        <NotesList
-          notes={filteredNotesList}
-          onNoteClick={(note) => {
-            setSelectedNote(note);
-            setIsModalOpen(true);
-          }}
-          onDelete={handleDeleteNote}
-          onFavoriteToggle={toggleFavorite}
+      </div>
+
+      {/* Overlay for mobile sidebar */}
+      {isSidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setIsSidebarOpen(false)}
         />
-        <div className="mx-56 justify-center">
+      )}
+
+      <div className="flex-1 flex flex-col min-h-0 w-full">
+        <div className="px-4 md:px-0">
+          <SearchBar
+            onSearch={setSearchQuery}
+            onSort={handleSort}
+            sortOrder={sortOrder}
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <NotesList
+            notes={filteredNotesList}
+            onNoteClick={(note) => {
+              setSelectedNote(note);
+              setIsModalOpen(true);
+            }}
+            onDelete={handleDeleteNote}
+            onFavoriteToggle={toggleFavorite}
+          />
+        </div>
+
+        <div className="px-4 md:px-56 pb-4">
           <CreateNoteBar onCreateNote={handleCreateNote} />
         </div>
+
         {isModalOpen && (
           <NoteModal
             note={selectedNote}
