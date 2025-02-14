@@ -11,6 +11,7 @@ import {
   Notebook,
   FilePlus,
   Speaker,
+  Download,
 } from "lucide-react";
 import api from "../context/api";
 
@@ -24,7 +25,6 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [images, setImages] = useState(note.images || []);
-  const [audioElement] = useState(new Audio(note.recordingUrl));
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -40,14 +40,43 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
     },
   ];
 
+  const [audioElement] = useState(() => {
+    const audio = new Audio(note.recordingUrl);
+    audio.preload = "metadata";
+    return audio;
+  });
+
+  useEffect(() => {
+    fetch(note.recordingUrl)
+      .then((res) => res.blob())
+      .then((blob) => {
+        const localUrl = URL.createObjectURL(blob);
+        audioElement.src = localUrl;
+        // Now, when loadedmetadata fires, audioElement.duration should be finite.
+      })
+      .catch((error) => console.error("Error fetching audio:", error));
+  }, [note.recordingUrl, audioElement]);
+
   useEffect(() => {
     const updateProgress = () => {
-      const percent = (audioElement.currentTime / audioElement.duration) * 100;
-      setProgress(percent);
+      if (isFinite(audioElement.duration) && audioElement.duration > 0) {
+        const percent =
+          (audioElement.currentTime / audioElement.duration) * 100;
+        setProgress(percent);
+      }
     };
 
     audioElement.addEventListener("timeupdate", updateProgress);
     return () => audioElement.removeEventListener("timeupdate", updateProgress);
+  }, [audioElement]);
+
+  useEffect(() => {
+    const onLoadedMetadata = () => {
+      console.log("Audio duration:", audioElement.duration);
+    };
+    audioElement.addEventListener("loadedmetadata", onLoadedMetadata);
+    return () =>
+      audioElement.removeEventListener("loadedmetadata", onLoadedMetadata);
   }, [audioElement]);
 
   const togglePlay = () => {
@@ -57,15 +86,6 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
       audioElement.play();
     }
     setIsPlaying(!isPlaying);
-  };
-
-  const handleDownload = () => {
-    const link = document.createElement("a");
-    link.href = note.recordingUrl;
-    link.download = `audio-${note._id}.mp3`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const handleTitleChange = (e) => {
@@ -119,6 +139,15 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
     }
   };
 
+  const formatTime = (time) => {
+    if (!isFinite(time) || isNaN(time)) return "00:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
   const handleUpdate = async () => {
     if (!isDirty) return;
 
@@ -164,7 +193,7 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleFavoriteToggle}
-                className="p-2 hover:bg-gray-50 bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-200 bg-gray-100 rounded-lg transition-colors"
               >
                 <Star
                   size={20}
@@ -175,7 +204,7 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
                   }
                 />
               </button>
-              <button className="px-3 py-2 text-sm bg-gray-100 text-gray-700 hover:bg-gray-50 rounded-lg">
+              <button className="px-3 py-2 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg">
                 Share
               </button>
               <button
@@ -219,27 +248,68 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
         </div>
 
         {/* Audio Player */}
+        {/* Audio Player */}
         {note.type === "audio" && (
-          <div className="px-6 py-3 flex items-center gap-4 bg-gray-100 mx-4 rounded-lg">
+          <div className="px-6 py-1 flex items-center gap-4 bg-gray-100 mx-4 rounded-full">
+            {/* Play/Pause Button */}
             <button
               onClick={togglePlay}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-900 text-white hover:bg-gray-800"
             >
               {isPlaying ? <Pause size={18} /> : <Play size={18} />}
             </button>
+
+            {/* Progress Bar */}
             <div className="flex-1">
-              <div className="bg-gray-200 rounded-full h-1">
+              <div
+                className="bg-gray-200 rounded-full h-1 relative cursor-pointer"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickX = e.clientX - rect.left;
+                  const newTime = (clickX / rect.width) * audioElement.duration;
+                  audioElement.currentTime = newTime;
+                }}
+              >
                 <div
                   className="bg-red-600 h-1 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
+                <span
+                  className="absolute bg-red-600 w-3 h-3 rounded-full -translate-x-1/2 -translate-y-2/3"
+                  style={{ left: `${progress}%` }}
+                />
               </div>
             </div>
+
+            {/* Timestamp */}
+            <span className="text-sm text-gray-800 whitespace-nowrap">
+              {formatTime(audioElement.currentTime)}/
+              {formatTime(audioElement.duration)}
+            </span>
+
+            {/* Download Button */}
             <button
-              onClick={handleDownload}
-              className="text-sm text-gray-800 hover:bg-gray-200 px-3 py-1 rounded-full bg-gray-100"
+              onClick={() => {
+                // Fetch the audio file as a blob and force download
+                fetch(note.recordingUrl)
+                  .then((res) => res.blob())
+                  .then((blob) => {
+                    const localUrl = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = localUrl;
+                    link.download = `audio-${note._id}.mp3`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(localUrl);
+                  })
+                  .catch((error) =>
+                    console.error("Error downloading audio:", error)
+                  );
+              }}
+              className="text-sm flex text-gray-800 gap-1 items-center justify-center hover:bg-gray-300 px-3 py-1 rounded-full bg-gray-200"
             >
-              ↓ Download Audio
+              <Download size={18} /> Download Audio
             </button>
           </div>
         )}
