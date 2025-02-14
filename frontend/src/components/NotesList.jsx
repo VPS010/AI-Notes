@@ -15,7 +15,7 @@ const NotesList = ({ notes, onNoteClick, onDelete }) => {
 
   return (
     <div className="flex-1 p-4 overflow-auto">
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 min-h-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 min-h-0">
         {notes.map((note) => (
           <NoteCard
             key={note._id}

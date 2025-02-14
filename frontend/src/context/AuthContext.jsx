@@ -10,11 +10,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Check authentication status on component mount
   const checkAuthStatus = async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-
       const res = await api.get("/api/auth/me");
       console.log("res.data", res.data);
       setUser({
@@ -33,6 +33,7 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, []);
 
+  // Register a new user
   const signup = async (data) => {
     try {
       const res = await api.post("/api/auth/signup", data);
@@ -49,6 +50,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Authenticate an existing user
   const login = async (data) => {
     try {
       const res = await api.post("/api/auth/login", data);
@@ -65,6 +67,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Logout: Clear user data and token
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
@@ -73,15 +76,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        signup,
-        login,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, signup, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

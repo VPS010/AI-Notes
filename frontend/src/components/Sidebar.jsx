@@ -10,6 +10,7 @@ const Sidebar = ({ showFavorites, onFavoritesClick }) => {
   const menuRef = useRef(null);
   const { user, logout } = useAuth();
 
+  // Hide logout menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -21,6 +22,7 @@ const Sidebar = ({ showFavorites, onFavoritesClick }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Returns the initials from the user's username
   const getUserInitials = () => {
     if (!user?.username) return "US";
     const names = user.username.split(" ");
@@ -32,7 +34,7 @@ const Sidebar = ({ showFavorites, onFavoritesClick }) => {
   };
 
   return (
-    <div className="w-64 bg-white border-t  border-gray-100 flex flex-col">
+    <div className="w-64 bg-white border-t border-gray-100 flex flex-col">
       <div className="px-4 ">
         <div
           onClick={() => navigate("/")}
@@ -61,7 +63,7 @@ const Sidebar = ({ showFavorites, onFavoritesClick }) => {
             <span>Home</span>
           </button>
           <button
-            className={`flex items-center w-full gap-3 px-3 cursor-default py-3 text-md  font-medium rounded-lg ${
+            className={`flex items-center w-full gap-3 px-3 cursor-default py-3 text-md font-medium rounded-lg ${
               showFavorites
                 ? "bg-purple-50 text-purple-600"
                 : "text-gray-600 hover:bg-gray-50"

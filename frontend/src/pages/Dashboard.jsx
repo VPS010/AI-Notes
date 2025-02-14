@@ -4,7 +4,7 @@ import Sidebar from "../components/Sidebar";
 import NotesList from "../components/NotesList";
 import CreateNoteBar from "../components/CreateNoteBar";
 import SearchBar from "../components/SearchBar";
-import NoteModal from "../components/NoteModal2";
+import NoteModal from "../components/NoteModal";
 import api from "../context/api";
 
 const Dashboard = () => {
@@ -19,6 +19,7 @@ const Dashboard = () => {
   const [showFavorites, setShowFavorites] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Fetch and process notes from API on component mount
   useEffect(() => {
     const fetchNotes = async () => {
       try {
@@ -37,7 +38,6 @@ const Dashboard = () => {
             duration: note.duration || "",
           };
         });
-
         setNotes(processedNotes);
       } catch (err) {
         setError("Failed to load notes");
@@ -48,6 +48,7 @@ const Dashboard = () => {
     fetchNotes();
   }, []);
 
+  // Handle sort order change
   const handleSort = (newSortOrder) => {
     setSortOrder(newSortOrder);
     const sortedNotes = [...filteredNotesList].sort((a, b) => {
@@ -58,6 +59,7 @@ const Dashboard = () => {
     setFilteredNotesList(sortedNotes);
   };
 
+  // Toggle favorite status for a note
   const toggleFavorite = async (noteId) => {
     try {
       const noteToUpdate = notes.find((note) => note._id === noteId);
@@ -73,16 +75,14 @@ const Dashboard = () => {
     }
   };
 
+  // Filter and sort notes based on search and favorites
   useEffect(() => {
     let filtered = notes.filter((note) => {
       const matchesSearch =
         note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         note.content.toLowerCase().includes(searchQuery.toLowerCase());
 
-      if (showFavorites) {
-        return matchesSearch && note.favorite;
-      }
-      return matchesSearch;
+      return showFavorites ? matchesSearch && note.favorite : matchesSearch;
     });
 
     filtered = filtered.sort((a, b) => {
@@ -94,6 +94,7 @@ const Dashboard = () => {
     setFilteredNotesList(filtered);
   }, [searchQuery, notes, sortOrder, showFavorites]);
 
+  // Process a note for display formatting
   const processNote = async (note) => {
     const createdAtDate = new Date(note.createdAt);
     return {
@@ -109,6 +110,7 @@ const Dashboard = () => {
     };
   };
 
+  // Create a new note
   const handleCreateNote = async (newNote) => {
     try {
       const { data } = await api.post("/api/notes", newNote);
@@ -119,6 +121,7 @@ const Dashboard = () => {
     }
   };
 
+  // Delete a note
   const handleDeleteNote = async (id) => {
     try {
       await api.delete(`/api/notes/${id}`);
@@ -128,6 +131,7 @@ const Dashboard = () => {
     }
   };
 
+  // Update an existing note
   const handleUpdateNote = (updatedNote) => {
     setNotes(
       notes.map((note) => (note._id === updatedNote._id ? updatedNote : note))
@@ -147,7 +151,7 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen relative">
-      {/* Mobile Sidebar Toggle Button */}
+      {/* Mobile Sidebar Toggle */}
       <button
         className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white rounded-md shadow-md"
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -155,7 +159,7 @@ const Dashboard = () => {
         <Menu className="h-6 w-6" />
       </button>
 
-      {/* Sidebar with responsive visibility */}
+      {/* Sidebar */}
       <div
         className={`${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -167,7 +171,7 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Overlay for mobile sidebar */}
+      {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
           className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
@@ -176,6 +180,7 @@ const Dashboard = () => {
       )}
 
       <div className="flex-1 flex flex-col min-h-0 w-full">
+        {/* Search Bar */}
         <div className="px-4 md:px-0">
           <SearchBar
             onSearch={setSearchQuery}
@@ -184,6 +189,7 @@ const Dashboard = () => {
           />
         </div>
 
+        {/* Notes List */}
         <div className="flex-1 overflow-y-auto">
           <NotesList
             notes={filteredNotesList}
@@ -196,10 +202,12 @@ const Dashboard = () => {
           />
         </div>
 
+        {/* Create Note Bar */}
         <div className="px-4 md:px-56 pb-4">
           <CreateNoteBar onCreateNote={handleCreateNote} />
         </div>
 
+        {/* Note Modal */}
         {isModalOpen && (
           <NoteModal
             note={selectedNote}
