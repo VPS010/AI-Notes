@@ -4,14 +4,14 @@ services:
     ports:
       - "5173:5173"
     networks:
-      - yeargoalnet
+      - notesnet
 
   backend:
     build: ./backend
     ports:
       - "5000:5000"
     networks:
-      - yeargoalnet
+      - notesnet
     depends_on:
       - mongoDB
     restart: always
@@ -21,12 +21,12 @@ services:
     ports:
       - "27017:27017"
     networks:
-      - yeargoalnet
+      - notesnet
     volumes:
       - mongo-data:/data/db
 
 networks:
-  yeargoalnet:
+  notesnet:
     driver: bridge
 
 volumes:
