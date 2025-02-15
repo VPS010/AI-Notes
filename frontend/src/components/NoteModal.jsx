@@ -1,4 +1,3 @@
-// NoteModal.js
 import React, { useState, useEffect } from "react";
 import Header from "./NoteModalComps/Header";
 import AudioPlayer from "./NoteModalComps/AudioPlayer";
@@ -6,6 +5,7 @@ import TabNavigation from "./NoteModalComps/TabNavigation";
 import TranscriptContent from "./NoteModalComps/TranscriptContent";
 import ImageUpload from "./NoteModalComps/ImageUpload";
 import UpdateButton from "./NoteModalComps/UpdateButton";
+import { toast } from "react-toastify";
 import api from "../context/api";
 import { Notebook, Captions, FilePlus, Speaker } from "lucide-react";
 
@@ -182,6 +182,10 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
       setTimeout(() => {
         setFavoriteAnimate(false);
       }, 1000);
+
+      newFavoriteState
+        ? toast.success("Added to Favorites")
+        : toast.success("Removed from Favorites");
     } catch (error) {
       setIsFavorite(!isFavorite);
       setFavoriteAnimate(false);
@@ -216,6 +220,7 @@ const NoteModal = ({ note, onClose, onUpdate }) => {
       const { data } = await api.patch(`/api/notes/${note._id}`, updatedNote);
       onUpdate(data.data);
       setIsDirty(false);
+      toast.success("Updated successfully!");
     } catch (error) {
       console.error("Error updating note:", error);
     } finally {

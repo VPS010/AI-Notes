@@ -19,7 +19,7 @@ export const createNote = async (req, res) => {
             content,
             images: images || [],
             recordingUrl,
-            duration: duration || "", // Store the duration returned by the uploadAudio endpoint
+            duration: duration || "0:00",
             favorite: favorite || false
         });
 

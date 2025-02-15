@@ -276,12 +276,9 @@ const CreateNoteBar = ({ onCreateNote }) => {
     }
   };
 
-  /**
-   * Handle image file uploads.
-   *
-   * @param {Event} e - Change event from file input.
-   */
-  const handleImageUpload = (e) => {
+  
+  // Handle image file uploads.
+    const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
     setImages((prev) => [...prev, ...files]);
   };
@@ -289,7 +286,6 @@ const CreateNoteBar = ({ onCreateNote }) => {
   /**
    * Render a browser warning if required features are not supported.
    *
-   * @returns {React.ReactNode|null} - Warning element or null.
    */
   const renderBrowserWarning = () => {
     if (!supportsMedia || !supportsSpeech) {

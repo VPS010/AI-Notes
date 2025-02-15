@@ -5,6 +5,7 @@ import NotesList from "../components/NotesList";
 import CreateNoteBar from "../components/CreateNoteBar";
 import SearchBar from "../components/SearchBar";
 import NoteModal from "../components/NoteModal";
+import { toast } from "react-toastify";
 import api from "../context/api";
 
 const Dashboard = () => {
@@ -59,22 +60,6 @@ const Dashboard = () => {
     setFilteredNotesList(sortedNotes);
   };
 
-  // Toggle favorite status for a note
-  const toggleFavorite = async (noteId) => {
-    try {
-      const noteToUpdate = notes.find((note) => note._id === noteId);
-      const updatedNote = { ...noteToUpdate, favorite: !noteToUpdate.favorite };
-
-      await api.patch(`/api/notes/${noteId}`, {
-        favorite: updatedNote.favorite,
-      });
-
-      setNotes(notes.map((note) => (note._id === noteId ? updatedNote : note)));
-    } catch (err) {
-      console.error("Failed to update favorite status:", err);
-    }
-  };
-
   // Filter and sort notes based on search and favorites
   useEffect(() => {
     let filtered = notes.filter((note) => {
@@ -116,6 +101,7 @@ const Dashboard = () => {
       const { data } = await api.post("/api/notes", newNote);
       const processedNote = await processNote(data.data);
       setNotes([...notes, processedNote]);
+      toast.success("New Note Added!");
     } catch (err) {
       console.error("Create failed:", err);
     }
@@ -126,6 +112,7 @@ const Dashboard = () => {
     try {
       await api.delete(`/api/notes/${id}`);
       setNotes(notes.filter((note) => note._id !== id));
+      toast.success("Note Deleted!");
     } catch (err) {
       console.error("Delete failed:", err);
     }
@@ -198,7 +185,6 @@ const Dashboard = () => {
               setIsModalOpen(true);
             }}
             onDelete={handleDeleteNote}
-            onFavoriteToggle={toggleFavorite}
           />
         </div>
 

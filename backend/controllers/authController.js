@@ -15,7 +15,7 @@ export const getMe = async (req, res) => {
     }
 };
 
-// @desc    Register new user
+//  Register new user
 export const registerUser = async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -42,7 +42,7 @@ export const registerUser = async (req, res) => {
     }
 };
 
-// @desc    Authenticate user
+//   Authenticate user
 export const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;

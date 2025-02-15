@@ -31,6 +31,8 @@ export const uploadImage = async (req, res) => {
     }
 };
 
+
+// Audio upload to Bytescale
 export const uploadAudio = async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ message: "No audio file" });

@@ -17,7 +17,9 @@ app.use(cors({
     origin: process.env.FRONTEND_URL,
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
-})); app.use(express.json());
+})); 
+
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
