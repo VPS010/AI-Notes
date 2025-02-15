@@ -1,10 +1,33 @@
 services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    networks:
+      - yeargoalnet
+
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    networks:
+      - yeargoalnet
+    depends_on:
+      - mongoDB
+    restart: always
+
   mongoDB:
     image: mongo:latest
     ports:
       - "27017:27017"
+    networks:
+      - yeargoalnet
     volumes:
       - mongo-data:/data/db
+
+networks:
+  yeargoalnet:
+    driver: bridge
 
 volumes:
   mongo-data:
